@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>光衰計算器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+            background: linear-gradient(180deg, #1c1c1e 0%, #000000 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 40px 20px 80px 20px;
+        }
+        .calculator {
+            width: 100%;
+            max-width: 380px;
+            background: rgba(28, 28, 30, 0.9);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            margin-top: 20px;
+        }
+        .display {
+            padding: 40px 30px 20px;
+            text-align: right;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+        .total-label {
+            font-size: 28px;
+            opacity: 0.7;
+            margin-bottom: 8px;
+        }
+        #totalAttenuation {
+            font-size: 68px;
+            font-weight: 300;
+            letter-spacing: -2px;
+        }
+        .count-label {
+            font-size: 20px;
+            opacity: 0.6;
+            margin-top: 10px;
+        }
+        .buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            padding: 20px 24px 24px;
+        }
+        button {
+            aspect-ratio: 1;
+            border-radius: 50%;
+            border: none;
+            font-size: 32px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            touch-action: manipulation;
+        }
+        button:active {
+            transform: scale(0.92);
+        }
+        .btn-number {
+            background: #333;
+            color: white;
+        }
+        .btn-operator {
+            background: #ff9500;
+            color: white;
+        }
+        .btn-clear {
+            background: #a5a5a5;
+            color: black;
+            font-size: 28px;
+        }
+        .splitter-list {
+            background: rgba(0,0,0,0.4);
+            margin: 0 24px 24px;
+            padding: 16px;
+            border-radius: 16px;
+            max-height: 220px;
+            overflow-y: auto;
+            display: none;
+        }
+        .splitter-list.show {
+            display: block;
+        }
+        .splitter-list li {
+            list-style: none;
+            font-size: 18px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            cursor: pointer;
+        }
+        .splitter-list li:last-child {
+            border-bottom: none;
+        }
+        .splitter-list li::after {
+            content: "✕";
+            float: right;
+            color: #ff3b30;
+            font-weight: bold;
+        }
+        .dp-input {
+            position: absolute;
+            opacity: 0;
+            height: 0;
+            width: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <div class="display">
+            <div class="total-label">總光衰</div>
+            <div id="totalAttenuation">0.0</div>
+            <div class="count-label">已選分光器：<span id="splittersCount">0</span> 個</div>
+        </div>
+
+        <div class="buttons-grid">
+            <button class="btn-clear" onclick="resetAll()">AC</button>
+            <button class="btn-operator" onclick="document.getElementById('dpValue').focus()">DP</button>
+            <button class="btn-operator" id="toggleListBtn" onclick="toggleSplitterList()">≡</button>
+
+            <button class="btn-number" onclick="addSplitter('1x2', 3.6)">1x2</button>
+            <button class="btn-number" onclick="addSplitter('1x4', 6.8)">1x4</button>
+            <button class="btn-number" onclick="addSplitter('1x8', 10.3)">1x8</button>
+
+            <button class="btn-number" onclick="addSplitter('1x16', 13.5)">1x16</button>
+            <button class="btn-number" onclick="addSplitter('1x32', 16.8)">1x32</button>
+            <button class="btn-number" onclick="addSplitter('1x64', 20.1)">1x64</button>
+        </div>
+
+        <div class="splitter-list" id="splittersList"></div>
+    </div>
+
+    <!-- 隱藏的 DP 輸入欄位 -->
+    <input type="number" id="dpValue" class="dp-input" placeholder="DP 值" step="0.1">
+
+    <script>
+        let dp = 0;
+        let splitters = [];
+        let totalSplitterAtt = 0;
+
+        const dpInput = document.getElementById('dpValue');
+        const toggleBtn = document.getElementById('toggleListBtn');
+        const listElement = document.getElementById('splittersList');
+
+        // 強化事件監聽：直接讀取完整 value，避免順序問題
+        dpInput.addEventListener('input', syncDpValue);
+        dpInput.addEventListener('change', syncDpValue);
+        dpInput.addEventListener('keyup', syncDpValue);
+        dpInput.addEventListener('blur', syncDpValue);
+
+        function syncDpValue() {
+            // 每次事件都重新讀取完整的輸入值
+            const rawValue = dpInput.value.trim();
+            dp = rawValue === '' ? 0 : parseFloat(rawValue);
+            updateDisplay();
+        }
+
+        function addSplitter(type, att) {
+            splitters.push({type, att});
+            totalSplitterAtt += att;
+            updateDisplay();
+        }
+
+        function removeSplitter(index) {
+            totalSplitterAtt -= splitters[index].att;
+            splitters.splice(index, 1);
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            const total = dp + totalSplitterAtt;
+            document.getElementById('totalAttenuation').textContent = total.toFixed(1);
+            document.getElementById('splittersCount').textContent = splitters.length;
+
+            const list = document.getElementById('splittersList');
+            list.innerHTML = '';
+            if (splitters.length === 0) {
+                list.innerHTML = '<li style="text-align:center; color:#888;">尚未選擇分光器</li>';
+            } else {
+                splitters.forEach((s, index) => {
+                    const li = document.createElement('li');
+                    li.textContent = `${s.type} (+${s.att} dB)`;
+                    li.onclick = () => removeSplitter(index);
+                    list.appendChild(li);
+                });
+            }
+        }
+
+        function resetAll() {
+            dp = 0;
+            dpInput.value = '';
+            splitters = [];
+            totalSplitterAtt = 0;
+            updateDisplay();
+            listElement.classList.remove('show');
+            toggleBtn.textContent = '≡';
+        }
+
+        function toggleSplitterList() {
+            if (listElement.classList.contains('show')) {
+                listElement.classList.remove('show');
+                toggleBtn.textContent = '≡';
+            } else {
+                listElement.classList.add('show');
+                toggleBtn.textContent = '-';
+            }
+        }
+
+        updateDisplay();
+    </script>
+</body>
+</html>
