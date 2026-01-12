@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>光衰計算器 2026</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+            background: linear-gradient(180deg, #1c1c1e 0%, #000000 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+        .calculator {
+            width: 100%;
+            max-width: 380px;
+            background: rgba(28, 28, 30, 0.9);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .display {
+            padding: 40px 30px 20px;
+            text-align: right;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+        .total-label {
+            font-size: 18px;
+            opacity: 0.6;
+            margin-bottom: 4px;
+        }
+        #totalAttenuation {
+            font-size: 64px;
+            font-weight: 200;
+            letter-spacing: -1px;
+            color: #fff;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #8e8e93;
+        }
+        .buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            padding: 20px 24px 24px;
+        }
+        button {
+            aspect-ratio: 1;
+            border-radius: 50%;
+            border: none;
+            font-size: 24px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        button:active {
+            transform: scale(0.9);
+            opacity: 0.7;
+        }
+        .btn-number {
+            background: #333;
+            color: white;
+        }
+        .btn-operator {
+            background: #ff9500;
+            color: white;
+        }
+        .btn-clear {
+            background: #a5a5a5;
+            color: black;
+        }
+        .splitter-list {
+            background: rgba(255,255,255,0.05);
+            margin: 0 24px 24px;
+            padding: 12px;
+            border-radius: 16px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+        }
+        .splitter-list.show {
+            display: block;
+        }
+        .splitter-list li {
+            list-style: none;
+            font-size: 16px;
+            padding: 12px 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .splitter-list li:last-child {
+            border-bottom: none;
+        }
+        .remove-icon {
+            color: #ff3b30;
+            font-weight: bold;
+            font-size: 18px;
+            padding: 4px 12px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="calculator">
+        <div class="display">
+            <div class="total-label">總光衰 (dB)</div>
+            <div id="totalAttenuation">0.0</div>
+            <div class="info-row">
+                <span>DP 初始: <span id="dpDisplay">0.0</span></span>
+                <span>分光器: <span id="splittersCount">0</span> 個</span>
+            </div>
+        </div>
+
+        <div class="buttons-grid">
+            <button class="btn-clear" onclick="resetAll()">AC</button>
+            <button class="btn-operator" onclick="inputDP()">DP</button>
+            <button class="btn-operator" id="toggleListBtn" onclick="toggleSplitterList()">≡</button>
+
+            <button class="btn-number" onclick="addSplitter('1x2', 3.6)">1x2</button>
+            <button class="btn-number" onclick="addSplitter('1x4', 6.8)">1x4</button>
+            <button class="btn-number" onclick="addSplitter('1x8', 10.3)">1x8</button>
+
+            <button class="btn-number" onclick="addSplitter('1x16', 13.5)">1x16</button>
+            <button class="btn-number" onclick="addSplitter('1x32', 16.8)">1x32</button>
+            <button class="btn-number" onclick="addSplitter('1x64', 20.1)">1x64</button>
+        </div>
+
+        <div class="splitter-list" id="splittersList"></div>
+    </div>
+
+    <script>
+        let dp = 0;
+        let splitters = [];
+        let totalSplitterAtt = 0;
+
+        const listElement = document.getElementById('splittersList');
+        const toggleBtn = document.getElementById('toggleListBtn');
+
+        // 使用 Prompt 彈窗輸入，解決輸入順序錯亂問題
+        function inputDP() {
+            const rawValue = prompt("請輸入 DP 初始值 (dB):", dp === 0 ? "" : dp);
+            if (rawValue !== null) {
+                const parsed = parseFloat(rawValue);
+                dp = isNaN(parsed) ? 0 : parsed;
+                updateDisplay();
+            }
+        }
+
+        function addSplitter(type, att) {
+            splitters.push({type, att});
+            totalSplitterAtt += att;
+            updateDisplay();
+        }
+
+        function removeSplitter(index) {
+            totalSplitterAtt -= splitters[index].att;
+            splitters.splice(index, 1);
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            const total = dp + totalSplitterAtt;
+            document.getElementById('totalAttenuation').textContent = total.toFixed(1);
+            document.getElementById('dpDisplay').textContent = dp.toFixed(1);
+            document.getElementById('splittersCount').textContent = splitters.length;
+
+            const list = document.getElementById('splittersList');
+            list.innerHTML = '';
+            if (splitters.length === 0) {
+                list.innerHTML = '<li style="justify-content:center; color:#888;">尚未選擇分光器</li>';
+            } else {
+                splitters.forEach((s, index) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <span>${s.type} (+${s.att} dB)</span>
+                        <span class="remove-icon" onclick="removeSplitter(${index})">✕</span>
+                    `;
+                    list.appendChild(li);
+                });
+            }
+        }
+
+        // 修改後的 resetAll：直接清空，不彈窗
+        function resetAll() {
+            dp = 0;
+            splitters = [];
+            totalSplitterAtt = 0;
+            updateDisplay();
+            listElement.classList.remove('show');
+            toggleBtn.textContent = '≡';
+        }
+
+        function toggleSplitterList() {
+            if (listElement.classList.contains('show')) {
+                listElement.classList.remove('show');
+                toggleBtn.textContent = '≡';
+            } else {
+                listElement.classList.add('show');
+                toggleBtn.textContent = '-';
+            }
+        }
+
+        updateDisplay();
+    </script>
+</body>
+</html>
