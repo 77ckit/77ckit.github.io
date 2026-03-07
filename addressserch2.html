@@ -12,7 +12,7 @@
         #timer { font-size: 1.2em; font-weight: bold; margin-top: 10px; }
     </style>
 </head>
-<body>
+<body onclick="instantJump()">
 
 <div class="box" id="main">
     <h1>正在自動讀取...</h1>
@@ -20,7 +20,7 @@
     <p id="statusText">正在檢查剪貼簿內容<br><span id="timer">3</span> 秒後自動跳轉</p>
 </div>
 
-<!-- 修正後的 Action 地址必須包含 /search -->
+<!-- 修正：Action 必須指向 /search 才能執行搜尋 -->
 <form id="aiForm" action="https://www.google.com" method="GET" style="display:none;">
     <input type="hidden" name="q" id="qField">
     <input type="hidden" name="udm" value="50">
@@ -30,28 +30,36 @@
 <script>
     const SUFFIX = "\n簡短列出以下三點：不要添加其它文字\n地址查詢\n保安控制室位置\n管理處電話";
     let timeLeft = 3;
+    let isExecuted = false; // 防止重複執行
 
-    // 頁面加載後自動開始倒數與讀取
+    // 1. 頁面加載後啟動 3 秒倒數
     window.onload = function() {
-        startCountdown();
-    };
-
-    function startCountdown() {
         const timerDisplay = document.getElementById('timer');
-        const interval = setInterval(async () => {
+        const interval = setInterval(() => {
             timeLeft--;
-            timerDisplay.innerText = timeLeft;
+            if (timerDisplay) timerDisplay.innerText = timeLeft;
 
             if (timeLeft <= 0) {
                 clearInterval(interval);
-                await autoReadAndSubmit();
+                autoReadAndSubmit();
             }
         }, 1000);
+    };
+
+    // 2. 點擊螢幕立即跳轉功能
+    function instantJump() {
+        if (isExecuted) return;
+        timeLeft = 0;
+        autoReadAndSubmit();
     }
 
+    // 3. 核心邏輯：讀取剪貼簿並提交
     async function autoReadAndSubmit() {
+        if (isExecuted) return;
+        isExecuted = true;
+
         try {
-            // 嘗試自動讀取剪貼簿
+            // 嘗試自動讀取 (需在 HTTPS 環境下)
             const text = await navigator.clipboard.readText();
             
             if (text && text.trim()) {
@@ -61,17 +69,18 @@
                 handleFail("剪貼簿是空的，請先複製屋苑名稱！");
             }
         } catch (err) {
-            console.error(err);
-            handleFail("自動讀取受阻 (小米系統或非HTTPS環境)");
+            console.error("讀取失敗:", err);
+            handleFail("無法讀取剪貼簿 (請確保網址為 HTTPS 並允許權限)");
         }
     }
 
     function handleFail(msg) {
-        const manual = prompt(msg + "\n\n請手動貼上：");
-        if (manual) {
+        const manual = prompt(msg + "\n\n請在此貼上：");
+        if (manual && manual.trim()) {
             submitSearch(manual);
         } else {
-            document.getElementById('main').innerHTML = "<h1>已停止</h1><p>請重新整理頁面再試</p>";
+            isExecuted = false; // 重置狀態允許再次點擊
+            document.getElementById('main').innerHTML = "<h1>已停止</h1><p>請複製內容後點擊螢幕重試</p>";
         }
     }
 
@@ -79,11 +88,6 @@
         document.getElementById('qField').value = keyword + SUFFIX;
         document.getElementById('aiForm').submit();
     }
-
-    // 備案：如果不想等 3 秒，點擊螢幕可以立即讀取
-    document.body.onclick = function() {
-        timeLeft = 0; 
-    };
 </script>
 
 </body>
