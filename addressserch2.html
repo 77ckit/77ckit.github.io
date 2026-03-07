@@ -3,21 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 自動搜尋中...</title>
+    <title>AI 智能助手</title>
     <style>
-        body { font-family: sans-serif; background: #f4f4f7; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; color: #333; }
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #1a73e8; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        body { font-family: sans-serif; background: #0078d4; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .box { text-align: center; width: 90%; }
+        .loading-ring { border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid #fff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .text { margin-top: 20px; font-weight: 500; }
+        #timer { font-size: 1.2em; font-weight: bold; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<div style="text-align: center;">
-    <div class="loader"></div>
-    <div class="text">自動讀取剪貼簿並搜尋中...</div>
+<div class="box" id="main">
+    <h1>正在自動讀取...</h1>
+    <div class="loading-ring"></div>
+    <p id="statusText">正在檢查剪貼簿內容<br><span id="timer">3</span> 秒後自動跳轉</p>
 </div>
 
+<!-- 修正後的 Action 地址必須包含 /search -->
 <form id="aiForm" action="https://www.google.com" method="GET" style="display:none;">
     <input type="hidden" name="q" id="qField">
     <input type="hidden" name="udm" value="50">
@@ -26,33 +29,61 @@
 
 <script>
     const SUFFIX = "\n簡短列出以下三點：不要添加其它文字\n地址查詢\n保安控制室位置\n管理處電話";
+    let timeLeft = 3;
 
-    // 頁面載入後立即執行
-    window.addEventListener('DOMContentLoaded', () => {
-        // 給瀏覽器 300 毫秒初始化環境
-        setTimeout(async () => {
-            try {
-                // 直接嘗試讀取剪貼簿
-                const text = await navigator.clipboard.readText();
-                
-                if (text && text.trim()) {
-                    execute(text.trim());
-                } else {
-                    document.querySelector('.text').innerText = "剪貼簿是空的，請先複製文字。";
-                }
-            } catch (err) {
-                console.error("自動讀取失敗:", err);
-                document.querySelector('.text').innerText = "自動讀取受阻，請點擊螢幕重試。";
-                // 備案：如果自動失敗，點擊螢幕仍可觸發
-                document.body.onclick = () => location.reload();
+    // 頁面加載後自動開始倒數與讀取
+    window.onload = function() {
+        startCountdown();
+    };
+
+    function startCountdown() {
+        const timerDisplay = document.getElementById('timer');
+        const interval = setInterval(async () => {
+            timeLeft--;
+            timerDisplay.innerText = timeLeft;
+
+            if (timeLeft <= 0) {
+                clearInterval(interval);
+                await autoReadAndSubmit();
             }
-        }, 300);
-    });
+        }, 1000);
+    }
 
-    function execute(val) {
-        document.getElementById('qField').value = val + SUFFIX;
+    async function autoReadAndSubmit() {
+        try {
+            // 嘗試自動讀取剪貼簿
+            const text = await navigator.clipboard.readText();
+            
+            if (text && text.trim()) {
+                document.getElementById('main').innerHTML = "<h1>已偵測內容</h1><p>正在前往 Google AI...</p>";
+                submitSearch(text.trim());
+            } else {
+                handleFail("剪貼簿是空的，請先複製屋苑名稱！");
+            }
+        } catch (err) {
+            console.error(err);
+            handleFail("自動讀取受阻 (小米系統或非HTTPS環境)");
+        }
+    }
+
+    function handleFail(msg) {
+        const manual = prompt(msg + "\n\n請手動貼上：");
+        if (manual) {
+            submitSearch(manual);
+        } else {
+            document.getElementById('main').innerHTML = "<h1>已停止</h1><p>請重新整理頁面再試</p>";
+        }
+    }
+
+    function submitSearch(keyword) {
+        document.getElementById('qField').value = keyword + SUFFIX;
         document.getElementById('aiForm').submit();
     }
+
+    // 備案：如果不想等 3 秒，點擊螢幕可以立即讀取
+    document.body.onclick = function() {
+        timeLeft = 0; 
+    };
 </script>
 
 </body>
