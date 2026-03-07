@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>地址查詢</title>
+    <title>AI 智能助手</title>
     <style>
         body { font-family: sans-serif; background: #0078d4; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
         .box { text-align: center; width: 90%; }
@@ -11,14 +11,15 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body onclick="forceRead()">
+<body onclick="instantJump()">
 
 <div class="box" id="main">
     <h1>正在讀取...</h1>
     <div class="loading-ring"></div>
-    <p>請確保已複製屋苑名稱<br>並點擊螢幕任何位置啟動</p>
+    <p id="statusText">請確保已複製屋苑名稱<br>並點擊螢幕任何位置啟動</p>
 </div>
 
+<!-- 修正後的 Action 地址 -->
 <form id="aiForm" action="https://www.google.com" method="GET" style="display:none;">
     <input type="hidden" name="q" id="qField">
     <input type="hidden" name="udm" value="50">
@@ -27,31 +28,57 @@
 
 <script>
     const SUFFIX = "\n簡短列出以下三點：不要添加其它文字\n地址查詢\n保安控制室位置\n管理處電話";
+    let isExecuted = false; // 防止重複執行
 
-    // 關鍵：Edge 需要明確的使用者點擊手勢來觸發權限請求
-    async function forceRead() {
+    // 1. 頁面載入 3 秒後自動執行
+    window.onload = function() {
+        setTimeout(() => {
+            if (!isExecuted) autoReadAndSubmit();
+        }, 3000);
+    };
+
+    // 2. 點擊螢幕立即執行
+    function instantJump() {
+        if (isExecuted) return;
+        autoReadAndSubmit();
+    }
+
+    // 3. 核心搜尋邏輯
+    async function autoReadAndSubmit() {
+        if (isExecuted) return;
+        isExecuted = true;
+
         try {
+            // 嘗試讀取剪貼簿 (需 HTTPS)
             const text = await navigator.clipboard.readText();
+            
             if (text && text.trim()) {
                 document.getElementById('main').innerHTML = "<h1>已偵測內容</h1><p>正在前往 Google AI...</p>";
-                const finalQuery = text.trim() + SUFFIX;
-                document.getElementById('qField').value = finalQuery;
-                document.getElementById('aiForm').submit();
+                submitSearch(text.trim());
             } else {
-                alert("剪貼簿沒有內容，請先複製文字！");
+                handleFail("剪貼簿是空的，請先複製屋苑名稱！");
             }
         } catch (err) {
-            console.error(err);
-            // 這裡通常是 HTTPS 或 權限問題
-            const manual = prompt("無法讀取剪貼簿 (請檢查是否為 HTTPS 網址)，請手動貼上：");
-            if (manual) {
-                document.getElementById('qField').value = manual + SUFFIX;
-                document.getElementById('aiForm').submit();
-            }
+            console.error("讀取失敗:", err);
+            handleFail("自動讀取受阻 (請檢查 HTTPS 網址或權限)");
         }
+    }
+
+    function handleFail(msg) {
+        const manual = prompt(msg + "\n\n請在此貼上：");
+        if (manual && manual.trim()) {
+            submitSearch(manual);
+        } else {
+            isExecuted = false; // 允許重試
+            document.getElementById('main').innerHTML = "<h1>已停止</h1><p>請複製內容後點擊螢幕重試</p>";
+        }
+    }
+
+    function submitSearch(keyword) {
+        document.getElementById('qField').value = keyword + SUFFIX;
+        document.getElementById('aiForm').submit();
     }
 </script>
 
 </body>
 </html>
-
