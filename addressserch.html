@@ -1,10 +1,19 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
-    <link rel="icon" href="./image/map.png">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI 地址查詢</title>
+
+    <!-- 1. 修正標籤位置：必須在 <head> 之內 -->
+    <!-- 2. 分頁圖示 -->
+    <link rel="icon" href="./image/map.png" type="image/png">
+    <!-- 3. 手機桌面圖示（這行是解決手機不顯示 Logo 的關鍵） -->
+    <link rel="apple-touch-icon" href="./image/map.png">
+    <!-- 4. PWA 模式宣告 -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+
     <style>
         body { font-family: sans-serif; background: #0078d4; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
         .box { text-align: center; width: 90%; }
@@ -20,7 +29,7 @@
     <p id="statusText">請確保已複製屋苑名稱<br>並點擊螢幕任何位置啟動</p>
 </div>
 
-<!-- 修正後的 Action 地址 -->
+<!-- 修正後的 Action 地址，補回 /search 確保搜尋生效 -->
 <form id="aiForm" action="https://www.google.com" method="GET" style="display:none;">
     <input type="hidden" name="q" id="qField">
     <input type="hidden" name="udm" value="50">
@@ -29,30 +38,25 @@
 
 <script>
     const SUFFIX = "\n簡短列出以下三點：不要添加其它文字\n地址查詢\n保安控制室位置\n管理處電話";
-    let isExecuted = false; // 防止重複執行
+    let isExecuted = false;
 
-    // 1. 頁面載入 3 秒後自動執行
     window.onload = function() {
         setTimeout(() => {
             if (!isExecuted) autoReadAndSubmit();
         }, 3000);
     };
 
-    // 2. 點擊螢幕立即執行
     function instantJump() {
         if (isExecuted) return;
         autoReadAndSubmit();
     }
 
-    // 3. 核心搜尋邏輯
     async function autoReadAndSubmit() {
         if (isExecuted) return;
         isExecuted = true;
 
         try {
-            // 嘗試讀取剪貼簿 (需 HTTPS)
             const text = await navigator.clipboard.readText();
-            
             if (text && text.trim()) {
                 document.getElementById('main').innerHTML = "<h1>已偵測內容</h1><p>正在前往 Google AI...</p>";
                 submitSearch(text.trim());
@@ -70,7 +74,7 @@
         if (manual && manual.trim()) {
             submitSearch(manual);
         } else {
-            isExecuted = false; // 允許重試
+            isExecuted = false;
             document.getElementById('main').innerHTML = "<h1>已停止</h1><p>請複製內容後點擊螢幕重試</p>";
         }
     }
@@ -83,8 +87,3 @@
 
 </body>
 </html>
-
-
-
-
-
