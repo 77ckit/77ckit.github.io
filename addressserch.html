@@ -5,14 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI 地址查詢</title>
 
-    <!-- 1. 修正標籤位置：必須在 <head> 之內 -->
-    <!-- 2. 分頁圖示 -->
+    <!-- 引用 Manifest 檔案 -->
+    <link rel="manifest" href="./manifest.json">
+    
+    <!-- 保留原本的圖示宣告 -->
     <link rel="icon" href="./image/map.png" type="image/png">
-    <!-- 3. 手機桌面圖示（這行是解決手機不顯示 Logo 的關鍵） -->
     <link rel="apple-touch-icon" href="./image/map.png">
-    <!-- 4. PWA 模式宣告 -->
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
 
     <style>
         body { font-family: sans-serif; background: #0078d4; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
@@ -87,3 +85,4 @@
 
 </body>
 </html>
+
