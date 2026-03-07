@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 自動搜尋中...</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f4f7; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; color: #333; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #1a73e8; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .text { margin-top: 20px; font-weight: 500; }
+    </style>
+</head>
+<body>
+
+<div style="text-align: center;">
+    <div class="loader"></div>
+    <div class="text">自動讀取剪貼簿並搜尋中...</div>
+</div>
+
+<form id="aiForm" action="https://www.google.com" method="GET" style="display:none;">
+    <input type="hidden" name="q" id="qField">
+    <input type="hidden" name="udm" value="50">
+    <input type="hidden" name="aep" value="11">
+</form>
+
+<script>
+    const SUFFIX = "\n簡短列出以下三點：不要添加其它文字\n地址查詢\n保安控制室位置\n管理處電話";
+
+    // 頁面載入後立即執行
+    window.addEventListener('DOMContentLoaded', () => {
+        // 給瀏覽器 300 毫秒初始化環境
+        setTimeout(async () => {
+            try {
+                // 直接嘗試讀取剪貼簿
+                const text = await navigator.clipboard.readText();
+                
+                if (text && text.trim()) {
+                    execute(text.trim());
+                } else {
+                    document.querySelector('.text').innerText = "剪貼簿是空的，請先複製文字。";
+                }
+            } catch (err) {
+                console.error("自動讀取失敗:", err);
+                document.querySelector('.text').innerText = "自動讀取受阻，請點擊螢幕重試。";
+                // 備案：如果自動失敗，點擊螢幕仍可觸發
+                document.body.onclick = () => location.reload();
+            }
+        }, 300);
+    });
+
+    function execute(val) {
+        document.getElementById('qField').value = val + SUFFIX;
+        document.getElementById('aiForm').submit();
+    }
+</script>
+
+</body>
+</html>
