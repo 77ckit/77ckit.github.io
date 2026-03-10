@@ -3,78 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HKO 報IN 助手</title>
+    <title>HKO 報IN助手</title>
     <style>
-        body { font-family: -apple-system, sans-serif; background: #eaeff2; display: flex; flex-direction: column; align-items: center; margin: 0; padding: 20px; }
-        /* 深度模擬 天文台 App 風格 */
-        .card { width: 340px; background: linear-gradient(180deg, #4a90e2 0%, #16437a 100%); border-radius: 20px; padding: 20px; color: white; box-shadow: 0 10px 25px rgba(0,0,0,0.15); }
-        .header { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 25px; opacity: 0.8; }
-        .loc-name { font-size: 26px; font-weight: bold; text-align: center; margin-bottom: 5px; }
-        .temp-row { font-size: 85px; font-weight: 200; text-align: center; margin: 15px 0; position: relative; }
-        .unit { font-size: 25px; position: absolute; top: 15px; }
-        .status-pill { background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 15px; font-size: 18px; margin: 0 auto; display: table; }
-        .footer-grid { margin-top: 35px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px; }
-        .btn { margin-top: 25px; padding: 12px 30px; background: #16437a; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        /* 模擬天文台 App 經典深藍漸變 */
+        :root { --hko-blue: linear-gradient(180deg, #3a7bd5 0%, #003366 100%); }
+        
+        body { font-family: -apple-system, Roboto, "Helvetica Neue", sans-serif; background: #f0f2f5; margin: 0; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        
+        /* 報IN 截圖卡片區域 */
+        .app-card {
+            width: 340px;
+            background: var(--hko-blue);
+            border-radius: 25px;
+            padding: 25px;
+            color: white;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .header { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 25px; opacity: 0.9; }
+        .sys-time { font-weight: bold; }
+
+        .content { text-align: center; }
+        .location { font-size: 26px; font-weight: bold; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .location::before { content: '📍'; font-size: 20px; }
+
+        .temp-box { font-size: 95px; font-weight: 200; margin: 15px 0; position: relative; display: inline-block; }
+        .unit { font-size: 30px; position: absolute; top: 15px; right: -35px; }
+
+        .weather-desc { font-size: 20px; background: rgba(255,255,255,0.2); padding: 6px 18px; border-radius: 20px; display: inline-block; margin-top: 10px; }
+
+        .footer { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 18px; font-size: 14px; gap: 8px; }
+        .footer-item { opacity: 0.9; }
+        .footer-right { text-align: right; }
+
+        .btn-refresh {
+            margin-top: 30px;
+            padding: 12px 30px;
+            background: #003366;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        
+        .loading-overlay { font-size: 12px; margin-top: 10px; color: #666; }
     </style>
 </head>
 <body>
 
-    <div class="card">
+    <div class="app-card" id="capture-area">
         <div class="header">
-            <span id="sys-time">00:00</span>
-            <span>我的天文台 (報IN版)</span>
+            <div class="sys-time" id="clock">00:00</div>
+            <div>我的天文台 (模擬)</div>
         </div>
-        <div class="loc-name" id="place">載入中...</div>
-        <div class="temp-row">
-            <span id="temp">--</span><span class="unit">°C</span>
+
+        <div class="content">
+            <div class="location" id="loc-name">正在讀取...</div>
+            <div class="temp-box">
+                <span id="temp-val">--</span><span class="unit">°C</span>
+            </div>
+            <br>
+            <div class="weather-desc" id="weather-text">數據同步中</div>
         </div>
-        <div class="status-pill" id="desc">連接中...</div>
-        <div class="footer-grid">
-            <div>濕度: <span id="hum">--</span>%</div>
-            <div style="text-align: right;">紫外網: 0.2</div>
-            <div>更新: <span id="up-time">--</span></div>
-            <div style="text-align: right;" id="dist">--</div>
+
+        <div class="footer">
+            <div class="footer-item">相對濕度：<span id="humidity">--</span>%</div>
+            <div class="footer-item footer-right">紫外網指數：0.1</div>
+            <div class="footer-item">更新：<span id="up-time">--</span></div>
+            <div class="footer-item footer-right">地區：<span id="dist">--</span></div>
         </div>
     </div>
 
-    <button class="btn" onclick="fetchWeather()">手動刷新</button>
+    <button class="btn-refresh" onclick="fetchHKO()">手動刷新數據</button>
+    <div class="loading-overlay" id="status-msg">已連接至 Google Proxy</div>
 
     <script>
-        function updateTime() {
-            const n = new Date();
-            document.getElementById('sys-time').innerText = n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0');
+        // 1. 即時更新左上角時間
+        function updateClock() {
+            const now = new Date();
+            const h = now.getHours().toString().padStart(2, '0');
+            const m = now.getMinutes().toString().padStart(2, '0');
+            document.getElementById('clock').innerText = `${h}:${m}`;
         }
-        setInterval(updateTime, 1000); updateTime();
+        setInterval(updateClock, 1000);
+        updateClock();
 
-        async function fetchWeather() {
-            const desc = document.getElementById('desc');
-            desc.innerText = "刷新中...";
-            
-            // 使用不同的代理服務器，這通常能解決 GitHub 上的 CORS 問題
-            const proxy = "https://corsproxy.io?"; 
-            const target = "https://data.weather.gov.hk";
-            
+        // 2. 獲取數據（使用你的 GAS 網址）
+        const proxyUrl = "https://script.google.com/macros/s/AKfycbxZy62CSIuXJGupqgENp1FpVWJ5Gj_buNvK5HAq8GjmwYBRy6VpWoYBGRfjMov5fbRD/exec";
+
+        async function fetchHKO() {
+            const status = document.getElementById('status-msg');
+            const weatherText = document.getElementById('weather-text');
+            status.innerText = "正在從天文台抓取最新數據...";
+
             try {
-                const response = await fetch(proxy + encodeURIComponent(target));
-                if (!response.ok) throw new Error();
+                const response = await fetch(proxyUrl);
                 const data = await response.json();
+
+                // 獲取第一個地點數據（通常是京士柏/天文台總部）
+                const mainTemp = data.temperature.data[0];
+                const mainHum = data.humidity.data[0];
+
+                document.getElementById('temp-val').innerText = mainTemp.value;
+                document.getElementById('loc-name').innerText = mainTemp.place;
+                document.getElementById('dist').innerText = mainTemp.place;
+                document.getElementById('humidity').innerText = mainHum.value;
                 
-                // 數據解析
-                const t = data.temperature.data[0]; 
-                const h = data.humidity.data[0];
+                // 更新時間
+                const now = new Date();
+                document.getElementById('up-time').innerText = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
                 
-                document.getElementById('temp').innerText = t.value;
-                document.getElementById('place').innerText = t.place;
-                document.getElementById('dist').innerText = t.place;
-                document.getElementById('hum').innerText = h.value;
-                document.getElementById('up-time').innerText = new Date().toLocaleTimeString('zh-HK',{hour12:false,hour:'2-digit',minute:'2-digit'});
-                desc.innerText = "數據已同步";
-            } catch (err) {
-                desc.innerText = "代理繁忙，請重試";
-                console.error("CORS Error:", err);
+                weatherText.innerText = "天晴"; // 此處可根據 icon 映射，暫設為天晴
+                status.innerText = "數據更新成功";
+
+            } catch (error) {
+                console.error(error);
+                status.innerText = "抓取失敗，請檢查網絡或 GAS 權限";
+                weatherText.innerText = "連線異常";
             }
         }
-        window.onload = fetchWeather;
+
+        // 網頁開啟時自動執行
+        window.onload = fetchHKO;
     </script>
 </body>
 </html>
