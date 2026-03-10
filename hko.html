@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模擬天文台報IN</title>
+    <style>
+        :root { --bg-blue: linear-gradient(180deg, #3a7bd5 0%, #00d2ff 100%); }
+        body { font-family: -apple-system, "Helvetica Neue", sans-serif; background-color: #f0f2f5; margin: 0; display: flex; flex-direction: column; align-items: center; padding-top: 50px; }
+        
+        /* 模擬 App 介面 */
+        .app-container {
+            width: 360px;
+            background: var(--bg-blue);
+            border-radius: 30px;
+            padding: 25px;
+            color: white;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 30px; }
+        .time-now { font-weight: bold; }
+
+        .main-info { text-align: center; }
+        .location { font-size: 28px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .location::before { content: '📍'; font-size: 20px; }
+        
+        .temp-display { font-size: 90px; font-weight: 200; margin: 20px 0; position: relative; }
+        .unit { font-size: 30px; position: absolute; top: 20px; }
+
+        .weather-status { font-size: 20px; background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 20px; display: inline-block; }
+
+        .details { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 20px; }
+        .detail-item { font-size: 14px; opacity: 0.9; line-height: 1.8; }
+
+        .btn-update {
+            margin-top: 30px;
+            padding: 12px 25px;
+            border-radius: 10px;
+            border: none;
+            background: #1d4a86;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container" id="screenshot-area">
+        <div class="header">
+            <div class="time-now" id="clock">00:00</div>
+            <div>我的天文台</div>
+        </div>
+
+        <div class="main-info">
+            <div class="location" id="loc-name">香港</div>
+            <div class="temp-display">
+                <span id="temp-val">--</span><span class="unit">°C</span>
+            </div>
+            <div class="weather-status" id="weather-desc">正在獲取數據...</div>
+        </div>
+
+        <div class="details">
+            <div class="detail-item">相對濕度：<span id="humidity">--</span>%</div>
+            <div class="detail-item" style="text-align: right;">紫外網指數：0.1</div>
+            <div class="detail-item">更新時間：<span id="update-time">--</span></div>
+            <div class="detail-item" style="text-align: right;">分區：<span id="dist-name">--</span></div>
+        </div>
+    </div>
+
+    <button class="btn-update" onclick="getHKOWeather()">獲取最新天氣</button>
+
+    <script>
+        // 更新左上角時鐘
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // 獲取天文台數據
+        async function getHKOWeather() {
+            const status = document.getElementById('weather-desc');
+            status.innerText = "讀取中...";
+            
+            try {
+                // 使用所有人都可訪問的開放數據接口
+                const res = await fetch('https://data.weather.gov.hk');
+                const data = await res.json();
+                
+                // 獲取第一個氣象站數據（通常是天文台總部）
+                const currentTemp = data.temperature.data[0];
+                const currentHum = data.humidity.data[0];
+                
+                document.getElementById('temp-val').innerText = currentTemp.value;
+                document.getElementById('loc-name').innerText = currentTemp.place;
+                document.getElementById('dist-name').innerText = currentTemp.place;
+                document.getElementById('humidity').innerText = currentHum.value;
+                document.getElementById('update-time').innerText = new Date().toLocaleTimeString('zh-HK', {hour12:false, hour:'2-digit', minute:'2-digit'});
+                status.innerText = "天晴"; // 實際可根據 data.icon 映射文字
+                
+            } catch (error) {
+                console.error(error);
+                status.innerText = "數據獲取失敗 (CORS 限制)";
+                alert("因瀏覽器安全限制，請嘗試在網頁伺服器環境運行，或使用 iOS 快捷指令。");
+            }
+        }
+
+        // 頁面加載後自動執行一次
+        window.onload = getHKOWeather;
+    </script>
+</body>
+</html>
