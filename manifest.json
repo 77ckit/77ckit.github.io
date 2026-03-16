@@ -13,7 +13,7 @@
       "purpose": "any maskable" // 适配安卓图标蒙版
     },
     {
-      "src": "./image/map-512.png", // 建议新增512x512版本（和map.png是同一张图，仅改尺寸）
+      "src": "./image/map.png", // 建议新增512x512版本（和map.png是同一张图，仅改尺寸）
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
