@@ -21,7 +21,67 @@
 </head>
 <body onclick="instantJump()">
 
+<div class="box" id="main">
+    <h1>正在讀取...</h1>
+    <div class="loading-ring"></div>
+    <p id="statusText">請確保已複製屋苑名稱<br>並點擊螢幕任何位置啟動</p>
+</div>
 
+<!-- 修正後的 Action 地址，補回 /search 確保搜尋生效 -->
+<form id="aiForm" action="https://www.google.com" method="GET" style="display:none;">
+    <input type="hidden" name="q" id="qField">
+    <input type="hidden" name="udm" value="50">
+    <input type="hidden" name="aep" value="11">
+</form>
+
+<script>
+    const SUFFIX = "\n簡短列出以下三點：\n地址查詢\n保安控制室位置\n管理處電話\n請勿額外補充以及追問";
+    let isExecuted = false;
+
+    window.onload = function() {
+        setTimeout(() => {
+            if (!isExecuted) autoReadAndSubmit();
+        }, 3000);
+    };
+
+    function instantJump() {
+        if (isExecuted) return;
+        autoReadAndSubmit();
+    }
+
+    async function autoReadAndSubmit() {
+        if (isExecuted) return;
+        isExecuted = true;
+
+        try {
+            const text = await navigator.clipboard.readText();
+            if (text && text.trim()) {
+                document.getElementById('main').innerHTML = "<h1>已偵測內容</h1><p>正在前往 Google AI...</p>";
+                submitSearch(text.trim());
+            } else {
+                handleFail("剪貼簿是空的，請先複製屋苑名稱！");
+            }
+        } catch (err) {
+            console.error("讀取失敗:", err);
+            handleFail("自動讀取受阻 (請檢查 HTTPS 網址或權限)");
+        }
+    }
+
+    function handleFail(msg) {
+        const manual = prompt(msg + "\n\n請在此貼上：");
+        if (manual && manual.trim()) {
+            submitSearch(manual);
+        } else {
+            isExecuted = false;
+            document.getElementById('main').innerHTML = "<h1>已停止</h1><p>請複製內容後點擊螢幕重試</p>";
+        }
+    }
+
+    function submitSearch(keyword) {
+        document.getElementById('qField').value = keyword + SUFFIX;
+        document.getElementById('aiForm').submit();
+    }
+</script>
 
 </body>
 </html>
